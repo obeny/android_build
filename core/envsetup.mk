@@ -153,6 +153,11 @@ $(error Building on a 32-bit x86 host is not supported: $(UNAME)!)
 endif
 endif
 
+ifeq ($(HOST_OS),darwin)
+  # Mac no longer supports 32-bit executables
+  HOST_2ND_ARCH :=
+endif
+
 BUILD_ARCH := $(HOST_ARCH)
 BUILD_2ND_ARCH := $(HOST_2ND_ARCH)
 
@@ -203,6 +208,17 @@ endef
 # We'll substitute with the real value after loading BoardConfig.mk.
 _vendor_path_placeholder := ||VENDOR-PATH-PH||
 TARGET_COPY_OUT_VENDOR := $(_vendor_path_placeholder)
+###########################################
+
+###########################################
+# Define TARGET_COPY_OUT_ODM to a placeholder, for at this point
+# we don't know if the device wants to build a separate odm.img
+# or just build odm stuff into vendor.img.
+# A device can set up TARGET_COPY_OUT_ODM to "odm" in its
+# BoardConfig.mk.
+# We'll substitute with the real value after loading BoardConfig.mk.
+_odm_path_placeholder := ||ODM-PATH-PH||
+TARGET_COPY_OUT_ODM := $(_odm_path_placeholder)
 ###########################################
 
 ###########################################
@@ -291,6 +307,15 @@ BOARD_USES_VENDORIMAGE := true
 else ifdef BOARD_USES_VENDORIMAGE
 $(error TARGET_COPY_OUT_VENDOR must be set to 'vendor' to use a vendor image)
 endif
+
+###########################################
+# Now we can substitute with the real value of TARGET_COPY_OUT_ODM
+ifeq ($(TARGET_COPY_OUT_ODM),$(_odm_path_placeholder))
+TARGET_COPY_OUT_ODM := $(TARGET_COPY_OUT_VENDOR)/odm
+else ifeq ($(filter odm $(TARGET_COPY_OUT_VENDOR)/odm,$(TARGET_COPY_OUT_ODM)),)
+$(error TARGET_COPY_OUT_ODM must be either 'odm' or '$(TARGET_COPY_OUT_VENDOR)/odm', seeing '$(TARGET_COPY_OUT_ODM)'.)
+endif
+PRODUCT_COPY_FILES := $(subst $(_odm_path_placeholder),$(TARGET_COPY_OUT_ODM),$(PRODUCT_COPY_FILES))
 
 ###########################################
 # Now we can substitute with the real value of TARGET_COPY_OUT_PRODUCT
